@@ -1,0 +1,135 @@
+<!DOCTYPE html><head>
+
+<meta charset="utf-8">
+
+											
+</head>
+
+
+
+<style>
+	
+body {
+  font: 12px sans-serif;
+	background-color: #ADD8E6;
+}
+
+path {
+  stroke-width: 1px;
+  stroke: red;
+  fill: black;
+  cursor: pointer;
+}
+
+path:hover, path.highlighted {
+  fill: yellow;
+}
+
+</style>
+<body>
+<script src="http://d3js.org/d3.v3.min.js"></script>
+<script>
+
+//Map dimensions (in pixels)
+var width = 1024,
+    height = 768;
+
+
+var mydataset = []
+    d3.csv("zipcodes.csv", function(data) {
+      mydataset = data.map(function(d) { return [ +d["Zip Code"],d["Electricity(kBtu)"], d["Gas(kBtu)"], +d["Number of Buildings per Zip Code (for Average)"] ]; });
+      console.log(mydataset)
+});
+
+
+//Map projection
+var projection = d3.geo.mercator()
+    .scale(64252.91752917653)
+    .center([-87.73214208499294,41.83407063377038]) //projection center
+    .translate([width/2,height/2]) //translate to center the map in view
+
+//Generate paths based on projection
+var path = d3.geo.path()
+    .projection(projection);
+
+//Create an SVG
+var svg = d3.select("body").append("svg")
+    .attr("width", width)
+    .attr("height", height);
+
+//Group for the map features
+var features = svg.append("g")
+    .attr("class","features");
+
+//Create zoom/pan listener
+//Change [1,Infinity] to adjust the min/max zoom scale
+var zoom = d3.behavior.zoom()
+    .scaleExtent([1, Infinity])
+    .on("zoom",zoomed);
+
+svg.call(zoom);
+
+d3.json("chicago_zips_topojson.geojson",function(error,geodata) {
+  if (error) return console.log(error); //unknown error, check the console
+
+
+// The code that I used for displaying tool tips can be found here
+// https://chartio.com/resources/tutorials/how-to-show-data-on-mouseover-in-d3js/
+  var tooltip = d3.select("body")
+    .append("div")
+    .style("position", "absolute")
+    .style("z-index", "10")
+    .style("font-size", "15px")
+  //  .style("visibility", "hidden")
+    .style("background", "#FFFFFF")
+    .text("a simple tooltip");
+
+
+  //Createkeypath for eadADD8E6pture in the data
+  features.selectAll("path")
+    .data(geodata.features)
+    .enter()
+    .append("path")
+    .attr("d",path)
+    //.on("mouseover", function(d){tooltip.text("Electricity (kBtu): " + d.properties.objectid +" Zip Code: "+ d.properties.zip); return tooltip.style("visibility", "visible");})
+    .on("mouseover", function(d){
+      var result;
+      for(var i = 0, len = mydataset.length; i < len; i++ ) {
+        if (mydataset[i][0] == d.properties.zip) {
+          var zip_code = mydataset[i][0];
+          var electricity = mydataset[i][1];
+          var gas = mydataset[i][2];
+          var numBuildings = mydataset[i][3];
+        }
+
+      }
+      if (!zip_code) {
+        tooltip.text("No relevant data :( ");
+      } else {
+      tooltip.text("Electricity (kBtu): " + electricity +" Gas: "+ gas + " Zip Code: "+ zip_code);
+    }
+       return tooltip.style("visibility", "visible");
+     })
+
+      .on("mousemove", function(){return tooltip.style("top", (d3.event.pageY-10)+"px").style("left",(d3.event.pageX+10)+"px");})
+      .on("mouseout", function(){return tooltip.style("visibility", "hidden");});
+
+
+});
+
+// Add optional onClick events for features here
+// d.properties contains the attributes (e.g. d.properties.name, d.properties.population)
+function clicked(d,i) {
+
+}
+
+
+//Update map on zoom/pan
+function zoomed() {
+  features.attr("transform", "translate(" + zoom.translate() + ")scale(" + zoom.scale() + ")")
+      .selectAll("path").style("stroke-width", 1 / zoom.scale() + "px" );
+}
+
+</script>
+
+	
